@@ -2,10 +2,10 @@
 ### This script gets the FOB grade book and produces a csv with the final grades of the conversion classes, exam and project ###
 ################################################################################################################################
 
-setwd("/home/josemari/Desktop")
+setwd("C:/Users/zir826/Desktop")
 
 # Get paths to fob and fob grade book.
-fob_path = "/home/josemari/Desktop/2023-11-23T1253_Grades-X_405052.csv"
+fob_path = "C:/Users/zir826/Desktop/2023-11-27T1445_Grades-X_405052.csv"
 fob = read.csv(fob_path, check.names = FALSE)
 
 # Get indices of grade columns.
@@ -40,33 +40,31 @@ index = cbind(fob[,4], index)
 
 # Make vector to calculate the final conversion grade.
 conv_grade <- c(0,0)
-# Loop through he index rows.
+final_grade <- c(0,0)
+# Loop through the index rows.
 for (i in 3:nrow(index)){
   
   # Get the conversion classes grades.
   conv <- unlist(index[i, c("maths", "bio", "prog")])
 
-  # Calculate the conversion grade if student is doing two conversion classes.
-  if (length(which(is.na(conv))) == 1){
-    conv_grade_i = sum(data.frame(na.omit(conv)))/2
+  # If student has done programming (prog != NA), get programming grade.
+  if (!is.na(conv["prog"])){
+    conv_grade <- c(conv_grade, conv["prog"])
+  }
   
-  # Calculate the conversion grade if student is doing one conversion classes.
-  } else if(length(which(is.na(conv))) == 2){
-    conv_grade_i = sum(data.frame(na.omit(conv)))
+  # If student has done biology (prog == NA and bio != NA), get bio grade.
+  else if(!is.na(conv["bio"])){
+    conv_grade <- c(conv_grade, conv["bio"])
+  }
   
-  # Add NA for no classes done.
-  } else{conv_grade_i = NA}
+  # If student hasn't done prog or bio, take maths grade.
+  else{conv_grade <- c(conv_grade, conv["maths"])}
   
-  # Append the conversion grade to the vector.
-  conv_grade <- c(conv_grade, conv_grade_i)
+  # Calculate final grade.
+  final_grade <- c(final_grade, ((0.4*unlist(index[i, c("exam")])) + (0.3*unlist(index[i, c("project")])) + (0.3*conv_grade[i])))
+
 }
 
 # Write out csv with final grades.
-index = cbind(index, conv_grade)
+index = cbind(index, conv_grade, final_grade)
 write.csv(index, file = "fob_FinalGrades.csv", row.names = FALSE)
-
-
-
-
-
-
