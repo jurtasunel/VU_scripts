@@ -1,9 +1,13 @@
-### This script reads in an MSA file in fasta format.
-### Original Henikoff & Henikoff 1992 article: https://pmc.ncbi.nlm.nih.gov/articles/PMC50453/pdf/pnas01096-0363.pdf
+##################################################################################################################################
+### This script reads in an MSA file in fasta format and generates a BLOSUM matrix according to the Henikoff & Henikoff paper. ###
+### The output file is named BLOCKSmatrix.txt and is formated to match the format required by the other FoB skeleton scrips.   ###
+### Original Henikoff & Henikoff 1992 article: https://pmc.ncbi.nlm.nih.gov/articles/PMC50453/pdf/pnas01096-0363.pdf           ###
+##################################################################################################################################
 
 ### Import libraries.
 import sys
 import math
+import os
 
 ### Define functions.
 def parse_fasta(input_file):
@@ -126,7 +130,9 @@ def count_frequencies(block):
 
 def calculate_scores(Faa, Fpairs):
     """
-    This 
+    This function calculates the BLOSUM scores accoring to the Henikoff & Henikoff paper.
+    It gets the Aa and Aa pair frequency dictionaries as inputs, and returns a dictionary
+    with the scores for each pair as output.
     """
     # Calculate Probability of occurence of each Aminoacid.
     ### On the paper, they calculate it using the Pairs frquencies. Here we do it with the AA frequencies. It's the same thing.. but easier to code!! =D
@@ -170,7 +176,10 @@ def calculate_scores(Faa, Fpairs):
 
 def writeout_matrix(LogOdds_dict):
     """
-    This function
+    This function generates the BLOSUM matrix correctly formated. It takes the LogOdds
+    dictionary as input and generates the matrix with the correct values for each pair.
+    The two extra spaces on the strings is to match the output required by the other
+    skeleton scripts.
     """    
     # Make scafold of matrix. Add two spaces to match the BLOSUM62 file format from the FoB project.
     matrix = [["x", "  A", "  R", "  N", "  D", "  C", "  Q", "  E", "  G", "  H", "  I", "  L", "  K", "  M", "  F", "  P", "  S", "  T", "  W", "  Y", "  V"],
@@ -212,20 +221,39 @@ def writeout_matrix(LogOdds_dict):
                 elif len(str(LogOdds_dict[pair])) == 3:
                     matrix[row][col] = str(LogOdds_dict[pair])
 
-    with open("testfile.txt", "w") as f:
+    # Write out a file with the matrix.
+    with open("BLOCKmatrix.txt", "w") as f:
+        
+        # Write header with comment.
+        f.write(f"# This matrix was generated using the MSA file '{sys.argv[1]}'\n")
+        
+        # Loop through the matrix list.
         for row in matrix:
+            # Join all ellements of each list as one row on the output file.
             line = "".join(map(str, row))
             f.write(line + "\n")
+        
+        # Get the path of the file.
+        outpath = os.path.abspath("BLOCKmatrix.txt")
+        print(f"Matrix was writen to:\n{outpath}")
 
-
-    return
+    return 
 
 ### Run main funtion.
 def main():
-    # Get input file as terminal argument.
+    
+    # Print help message.
+    if sys.argv[1] == "-h" or sys.argv[1] == "--help":
+        print("Run the script with:\n\npython3 skeleton_script_make_blosum.py <MSA.fasta>\n\n"
+              + "MSA.fasta is any Multiple Sequence Aignment in fasta format.\nYou can use the insulinMSA.fasta file provided.")
+        sys.exit()
+
+    # Get largest block from input file.
     largest_block = get_block(parse_fasta(sys.argv[1]))[0]
+    # Get the AA and AApairs frequency dictionaries.
     Faa, Fpairs = count_frequencies(largest_block)
-    print(writeout_matrix(calculate_scores(Faa, Fpairs)))
+    # Write out the matrix.
+    writeout_matrix(calculate_scores(Faa, Fpairs))
 
 if __name__ == "__main__":
     main()
