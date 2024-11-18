@@ -135,38 +135,41 @@ def calculate_scores(Faa, Fpairs):
     with the scores for each pair as output.
     """
     # Calculate Probability of occurence of each Aminoacid.
-    ### On the paper, they calculate it using the Pairs frquencies. Here we do it with the AA frequencies. It's the same thing.. but easier to code!! =D
+    ### On the paper, they calculate it using the frequencies of the pairs. Here, we do it with the frequencies of the Aminoacids. It's the same thing... but easier to code!! =D
     Paa = {}
     for aa in Faa.keys():
         Paa[aa] = Faa[aa] / sum(Faa.values())
 
     # Calculate observed and expected probabilities of each AApair, and calculate the LogOdds value.
     Pobs = []
-    Pexp = []
+    Pexpect = []
     Lod = {}
 
     #########################
     ### START CODING HERE ###
     #########################
 
-    for pair in Fpairs:
-        # Observed probability = Pair Frequency / Total pairs 
+    for pair in Fpairs.keys():
+
+        # The Observed probability of a pair is the frequency of the pair divided by the total number of pairs. 
         obs = Fpairs[pair] / sum(Fpairs.values())
         Pobs.append(obs)
 
-        # Expected probabilities for equal AA on the pair = Probaility of AA by Probability of AA.
+        # The Expected probability of a simetric pair is the multiplication of the probaility of that Aminoacid by itself.
         if pair[0] == pair[1]:
             exp = Paa[pair[0]] * Paa[pair[0]]
-            Pexp.append(exp)
+            Pexpect.append(exp)
     
-        # Expected probabilities for different AA on the pair = Probaility of AA1 by Probability of AA2 by 2 (the 2 account for AB and BA being the same pair).
+        # The Expected probability of a non-simetric pair is the multiplication of the probability of the first AA by the second AA by 2 (the 2 account for AB and BA being the same pair).
         else:
             exp = Paa[pair[0]] * Paa[pair[1]] * 2
-            Pexp.append(exp)
+            Pexpect.append(exp)
 
         # Calculate Lod (Log Odds scores) of each pair, which is the log2 ratio of Pobserved/Pexpected, and multiplied by a scaling factor of 2.
         lod = math.log(obs/exp, 2)*2
         Lod[pair] = round(lod)
+        # Add also the reverse pair to make the matrix simetric.
+        Lod[str(pair[1]) + str(pair[0])] = round(lod)
 
     #######################
     ### END CODING HERE ###
@@ -220,7 +223,7 @@ def writeout_matrix(LogOdds_dict):
                 # No spaces with three digits.
                 elif len(str(LogOdds_dict[pair])) == 3:
                     matrix[row][col] = str(LogOdds_dict[pair])
-
+            
     # Write out a file with the matrix.
     with open("BLOCKmatrix.txt", "w") as f:
         
