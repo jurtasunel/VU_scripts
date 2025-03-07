@@ -19,10 +19,37 @@ library(class)
 ### Functions.
 
 # Function to create ROC plot.
-ROC <- function(dataframe, ){
+ROC <- function(dataframe, predict_col_index, groundtruth_col_index){
   
-  return()
+  # Sort the dataframa in decreasing order by the prediction for the roc plot.
+  rocdf <- dataframe[order(dataframe[,predict_col_index], decreasing = TRUE),]
+  # Make vectors to store TPR and FPR.
+  TPR <- c()
+  FPR <- c()
+  
+  # Loop through the rows of the roc dataframe.
+  for (i in 1:nrow(rocdf)){
+    
+    # Set each i score as a threshold.
+    threshold <- rocdf[i,predict_col_index]
+    # Calculate TP, FP, TN, FN
+    TP <- sum(rocdf[, groundtruth_col_index] != "Normal" & rocdf[, predict_col_index] >= threshold)
+    FP <- sum(rocdf[, groundtruth_col_index] == "Normal" & rocdf[, predict_col_index] >= threshold)
+    TN <- sum(rocdf[, groundtruth_col_index] == "Normal" & rocdf[, predict_col_index] < threshold)
+    FN <- sum(rocdf[, groundtruth_col_index] != "Normal" & rocdf[, predict_col_index] < threshold)
+    
+    # Append TPR and FPR.
+    tpr <- TP / (TP + FN)
+    fpr <- FP / (FP + TN)
+    TPR <- c(TPR, tpr)
+    FPR <- c(FPR, fpr)
+  }
+  # Plot the ROC plot.
+  plot(FPR, TPR, type = "b", col = "darkblue", main = "ROC plot")
+  abline(coef = c(TPR[1],1-TPR[1])) # Diagonal with intercept at lower left corner and slope of ratio of increase between two axis.
+  
 }
+
 # Function to split dataset. Input is one dataframe and split value (between 0 and 1), and outputs are train set and test set.
 splitdata <- function(dataframe, splitperc){
   
@@ -154,8 +181,11 @@ for (i in 1:50){
 # Make confusion matrix comparing model predictions with test labels.
 confusionMatrix(as.factor(model_predictions), as.factor(test_labels))
 
-
-
+###########
+### ROC ###
+###########
+ROC(inputfile, 44, 3)
+ROC()
 # 
 # 
 # ### Feature selection importance.
@@ -197,4 +227,10 @@ confusionMatrix(as.factor(model_predictions), as.factor(test_labels))
 ### How to decide the centering and scaling method?
 ### How to decide how many PC to use? Scree plot shows very low importance of each individual pc.
 ### How to decide which features to remove using the correlation heatmap? Is >4 enought to consider correlated features?
+
+
+
+
+
+
 
