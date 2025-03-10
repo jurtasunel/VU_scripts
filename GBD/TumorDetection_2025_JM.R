@@ -3,10 +3,11 @@
 ### COURSE CODE: 900255SCIY                   ###
 ### PRACTICAL: Tumor Detection                ###
 ### AUTHOR: Josemari Urtasun Elizari          ###
-### LAST MODIFIED: 07/03/2025                 ###
+### LAST MODIFIED: 10/03/2025                 ###
 #################################################
 
-### Documentation (1-plot in r, 2-PCA, 3-KNN with class. 4-KNN with caret, class, etc.):
+### Documentation (1-ROC plot, 2-plot in r, 3-PCA, 4-KNN with class. 5-KNN with caret, class, etc.):
+#https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc
 #https://r-coder.com/plot-r/
 #https://www.r-bloggers.com/2021/05/principal-component-analysis-pca-in-r/
 #https://www.geeksforgeeks.org/k-nn-classifier-in-r-programming/
@@ -17,39 +18,6 @@ library(caret)
 library(class)
 
 ### Functions.
-
-# Function to create ROC plot.
-ROC <- function(dataframe, predict_col_index, groundtruth_col_index){
-  
-  # Sort the dataframa in decreasing order by the prediction for the roc plot.
-  rocdf <- dataframe[order(dataframe[,predict_col_index], decreasing = TRUE),]
-  # Make vectors to store TPR and FPR.
-  TPR <- c()
-  FPR <- c()
-  
-  # Loop through the rows of the roc dataframe.
-  for (i in 1:nrow(rocdf)){
-    
-    # Set each i score as a threshold.
-    threshold <- rocdf[i,predict_col_index]
-    # Calculate TP, FP, TN, FN
-    TP <- sum(rocdf[, groundtruth_col_index] != "Normal" & rocdf[, predict_col_index] >= threshold)
-    FP <- sum(rocdf[, groundtruth_col_index] == "Normal" & rocdf[, predict_col_index] >= threshold)
-    TN <- sum(rocdf[, groundtruth_col_index] == "Normal" & rocdf[, predict_col_index] < threshold)
-    FN <- sum(rocdf[, groundtruth_col_index] != "Normal" & rocdf[, predict_col_index] < threshold)
-    
-    # Append TPR and FPR.
-    tpr <- TP / (TP + FN)
-    fpr <- FP / (FP + TN)
-    TPR <- c(TPR, tpr)
-    FPR <- c(FPR, fpr)
-  }
-  # Plot the ROC plot.
-  plot(FPR, TPR, type = "b", col = "darkblue", main = "ROC plot")
-  abline(coef = c(TPR[1],1-TPR[1])) # Diagonal with intercept at lower left corner and slope of ratio of increase between two axis.
-  
-}
-
 # Function to split dataset. Input is one dataframe and split value (between 0 and 1), and outputs are train set and test set.
 splitdata <- function(dataframe, splitperc){
   
@@ -121,46 +89,91 @@ setwd("/home/josemari/Desktop/MasterVU/2024/GBD")
 inputfile <- as.data.frame(read.csv("Table_S6.csv"))
 
 
-###################################
-### Step 1: Preprocessing data. ###
-###################################
+###########
+### ROC ###
+###########
 
-### Remove all rows with NA values.
+# Sort the data by decreasing order of prediction value.
+rocdf <- inputfile[order(inputfile$CancerSEEK.Logistic.Regression.Score, decreasing = TRUE),]
+# Get unique prediction values to use as thresholds.
+unique_vals <- unique(rocdf$CancerSEEK.Logistic.Regression.Score)
+
+# Make vectors to store TPR and FPR. Add 0 because is not a value on the dataset.
+TPR <- c(0)
+FPR <- c(0)
+
+# Loop through the unique values, using each of them as a threshold.
+for (threshold in unique_vals){
+  
+  # Calculate TP, FP, TN, FN.
+  TP <- sum(rocdf$Tumor.type != "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score >= threshold)
+  FP <- sum(rocdf$Tumor.type == "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score >= threshold)
+  TN <- sum(rocdf$Tumor.type == "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score < threshold)
+  FN <- sum(rocdf$Tumor.type != "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score < threshold)
+    
+  # Calculate tpr and fpr for current threshold.
+  tpr <- TP / (TP + FN)
+  fpr <- FP / (FP + TN)
+  # Append to the TPR and FPR vectors.
+  TPR <- c(TPR, tpr)
+  FPR <- c(FPR, fpr)
+}
+
+# Plot the ROC plot.
+plot(FPR, TPR, type = "b", col = "darkblue", main = "ROC plot")
+abline(0,1, col = "darkred", lty = 2) # Diagonal with intercept y = 0 and slope of 1. Lty = 2 for dashed line.
+
+
+###########
+### KNN ###
+###########
+
+# Step 1: Preprocessing data.
+#############################
+
+# Remove all rows with NA values.
 cleandata <- inputfile[complete.cases(inputfile),]
 rownames(cleandata) <- paste0("sample", 1:nrow(cleandata))
 # Remove metadata
 cleandata <- cleandata[,5:ncol(cleandata)]
 # Improvement --> remove or limit extreme outliers to not bias the model.
 
-### Split train and testset.
+# Step 2: Split dataset.
+########################
+
 # Separate train and test with function from caret. This keeps class balance between train and testset. 
 set.seed(123)
 split <- createDataPartition(cleandata$CancerSEEK.Test.Result, p = 0.8, list = FALSE) # list false makes a vector of rows.
 trainset <- cleandata[split,]
 testset <- cleandata[-split,]
 # Improvements --> modify split ratio depending on data. Use sampleSplit() from caTools for a total random split without balance check. 
+
+# Separate features and labels.
 train_features <- trainset[, -ncol(trainset)]
 train_labels <- trainset[, ncol(trainset)]
 test_features <- testset[, -ncol(testset)]
 test_labels <- testset[, ncol(testset)]
 
-### Center and scale/normalize.
-# Get scaling values from training data using preProcess() from caret. Do it only for the features, avoid last column with labels.
+# Step 3: Center and scale/normalize.
+#####################################
+
+# Get scaling values from training data using preProcess() from caret.
 scaling_values <- preProcess(train_features, method = "range")
 # Apply to training and test features.
 train_features <- predict(scaling_values, newdata = train_features)
 test_features <- predict(scaling_values, newdata =  test_features)
 # Improvement --> use another scaling method to see how changes results. method can be "center"/"scale"/"pca"/...
 
-##################################
-### Step 3: Run baseline model ###
-##################################
+
+# Step 4: Run baseline model.
+#############################
+
 # Create variables to store best k and best accuracy.
 best_k <- 0
 best_acc <- 0
 model_predictions <- ""
 # Run loop to find best values.
-for (i in 1:50){
+for (i in 1:30){
   
   # Run model with different k.
   model <- knn(train = train_features,
@@ -168,7 +181,7 @@ for (i in 1:50){
                cl = train_labels,
                k = i) 
   
-  # Calculate accuracy for each k.
+  # Calculate accuracy for each k by dividing correct predictions by total predictions.
   accuracy <- sum(model == test_labels) / length(test_labels)
 
   # Update values if the accuracy increased.
@@ -178,16 +191,18 @@ for (i in 1:50){
     model_predictions <- model
   }
 }
+print(paste0("Best K = ", best_k, "; Best accuracy = ", best_acc))
+
 # Make confusion matrix comparing model predictions with test labels.
 confusionMatrix(as.factor(model_predictions), as.factor(test_labels))
 
+
 ###########
-### ROC ###
+### PCA ###
 ###########
-ROC(inputfile, 44, 3)
-ROC()
-# 
-# 
+
+
+
 # ### Feature selection importance.
 # rocVarImp <- filterVarImp(features, factor(metadata$CancerSEEK.Test.Result))
 # rocVarImp <- rocVarImp[order(rocVarImp$Negative, decreasing = TRUE),]
@@ -227,10 +242,5 @@ ROC()
 ### How to decide the centering and scaling method?
 ### How to decide how many PC to use? Scree plot shows very low importance of each individual pc.
 ### How to decide which features to remove using the correlation heatmap? Is >4 enought to consider correlated features?
-
-
-
-
-
 
 
