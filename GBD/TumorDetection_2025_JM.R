@@ -17,8 +17,9 @@
 library(caret)
 library(class)
 
+
 ### Functions.
-# Function to split dataset. Input is one dataframe and split value (between 0 and 1), and outputs are train set and test set.
+# Function to split dataset. Inputs are a dataframe and the split value (between 0 and 1). Outputs are train set and test set.
 splitdata <- function(dataframe, splitperc){
   
   # Use the input value to get the row number to split the dataframe.
@@ -33,13 +34,25 @@ splitdata <- function(dataframe, splitperc){
 }
 # This can also be done with caret function createDataPartition() from caret (balanced) or sampleSplit() from caTools (random).
 
+
 # Function to scale with min-max.
 minmax <- function(dataframe){
   
-  for (column in 1:col(dataframe)){
+  # Make new dataframe to modify.
+  scaled_dataframe <- dataframe
+  
+  # Loop through columns and get minimum and maximum value.
+  for (column in 1:ncol(scaled_dataframe)){
+    min_val <- min(scaled_dataframe[, column])
+    max_val <- max(scaled_dataframe[, column])
     
-    
+    # Loop through rows and substract min then divide by difference of max and min.
+    for (row in 1:nrow(scaled_dataframe)){
+      scaled_dataframe[row, column] <- (scaled_dataframe[row, column] - min_val) / (max_val - min_val)
+    }
   }
+  
+  # Return scaled dataframe.
   return(scaled_dataframe)
 }
 # The two functions below can be done simply with base R: scale(x, center = TRUE, scale = TRUE).
@@ -84,8 +97,9 @@ zscore <- function(dataframe){
 }
 # This functions can also be done with preProcess() from caret and set the method = "range"/"scale"/"center".
 
+
 ### Data.
-setwd("/home/josemari/Desktop/MasterVU/2024/GBD")
+setwd("C:/Users/zir826/Desktop/2024-25/AUC/Practicals/TumorDetection")
 inputfile <- as.data.frame(read.csv("Table_S6.csv"))
 
 
@@ -110,7 +124,7 @@ for (threshold in unique_vals){
   FP <- sum(rocdf$Tumor.type == "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score >= threshold)
   TN <- sum(rocdf$Tumor.type == "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score < threshold)
   FN <- sum(rocdf$Tumor.type != "Normal" & rocdf$CancerSEEK.Logistic.Regression.Score < threshold)
-    
+  
   # Calculate tpr and fpr for current threshold.
   tpr <- TP / (TP + FN)
   fpr <- FP / (FP + TN)
@@ -128,19 +142,16 @@ abline(0,1, col = "darkred", lty = 2) # Diagonal with intercept y = 0 and slope 
 ### KNN ###
 ###########
 
-# Step 1: Preprocessing data.
-#############################
-
+### Step 1: Preprocessing data.
 # Remove all rows with NA values.
 cleandata <- inputfile[complete.cases(inputfile),]
 rownames(cleandata) <- paste0("sample", 1:nrow(cleandata))
-# Remove metadata
+# Remove metadata for machine learning.
 cleandata <- cleandata[,5:ncol(cleandata)]
 # Improvement --> remove or limit extreme outliers to not bias the model.
+#####
 
-# Step 2: Split dataset.
-########################
-
+### Step 2: Split dataset.
 # Separate train and test with function from caret. This keeps class balance between train and testset. 
 set.seed(123)
 split <- createDataPartition(cleandata$CancerSEEK.Test.Result, p = 0.8, list = FALSE) # list false makes a vector of rows.
@@ -149,14 +160,12 @@ testset <- cleandata[-split,]
 # Improvements --> modify split ratio depending on data. Use sampleSplit() from caTools for a total random split without balance check. 
 
 # Separate features and labels.
-train_features <- trainset[, -ncol(trainset)]
+train_features <- trainset[, -c(ncol(trainset)-1, ncol(trainset))]
 train_labels <- trainset[, ncol(trainset)]
-test_features <- testset[, -ncol(testset)]
+test_features <- testset[, -c(ncol(testset)-1, ncol(testset))]
 test_labels <- testset[, ncol(testset)]
 
-# Step 3: Center and scale/normalize.
-#####################################
-
+### Step 3: Center and scale/normalize.
 # Get scaling values from training data using preProcess() from caret.
 scaling_values <- preProcess(train_features, method = "range")
 # Apply to training and test features.
@@ -164,16 +173,13 @@ train_features <- predict(scaling_values, newdata = train_features)
 test_features <- predict(scaling_values, newdata =  test_features)
 # Improvement --> use another scaling method to see how changes results. method can be "center"/"scale"/"pca"/...
 
-
 # Step 4: Run baseline model.
-#############################
-
 # Create variables to store best k and best accuracy.
 best_k <- 0
 best_acc <- 0
 model_predictions <- ""
 # Run loop to find best values.
-for (i in 1:30){
+for (i in 1:50){
   
   # Run model with different k.
   model <- knn(train = train_features,
@@ -183,7 +189,7 @@ for (i in 1:30){
   
   # Calculate accuracy for each k by dividing correct predictions by total predictions.
   accuracy <- sum(model == test_labels) / length(test_labels)
-
+  
   # Update values if the accuracy increased.
   if (accuracy > best_acc){
     best_k <- i
@@ -201,6 +207,28 @@ confusionMatrix(as.factor(model_predictions), as.factor(test_labels))
 ### PCA ###
 ###########
 
+# Run PC on the numeric values of the data.
+pc_results <- prcomp(inputfile[, 5:43], center = TRUE, scale = TRUE)
+# Get colors depending on the sample labels.
+pc_colors <- ifelse(inputfile$Tumor.type != "Normal", "darkred", "darkblue")
+# Get the importance of each pc.
+pc_importance <- summary(pc_results)$importance
+# Plot the first two PCs.
+plot(pc_results$x[,1], y = pc_results$x[,2], col = pc_colors, type = "p",
+     xlab = paste0("PC1 (", round(pc_importance[2, "PC1"], digits = 3), ")"),
+     ylab = paste0("PC2 (", round(pc_importance[2, "PC2"], digits = 3), ")"),
+     main = "PCA plot")
+legend("topright", c("Tumor", "Healthy"), fill = c("darkred", "darkblue"))
+
+# Make scree plot to visualize the proportion of variance from each component.
+plot(pc_importance[2,], type = "b", col = "darkblue",
+     ylab = "Proportion of Variance",
+     xlab = "PC components",
+     main = "Scree plot")
+
+
+# # Get the loadings (the contribution of each feature to each pc).
+# pc_loadings <- pca_results$rotation
 
 
 # ### Feature selection importance.
@@ -220,17 +248,7 @@ confusionMatrix(as.factor(model_predictions), as.factor(test_labels))
 #         margins = c(10, 10))
 # 
 # 
-# ### Step 3: PCA
-# # Use the principal component function to calculate the PC values.
-# pca_results <- prcomp(features, scale. = FALSE, center = FALSE)
-# 
-# # Get the importance of each pc.
-# pc_importace <- summary(pca_results)$importance
-# # Make scree plot to visualize the proportion of variance from each component.
-# plot(pc_importace[2,], type = "b", col = "darkblue", ylab = "Proportion of Variance", xlab = "PC components", main = "Scree plot")
-# 
-# # Get the loadings (the contribution of each feature to each pc).
-# pc_loadings <- pca_results$rotation
+
 # 
 # # Examine the correlation between variables.
 # correl_features <- cor(features)
