@@ -1,9 +1,9 @@
-############################################################################################
-### This script reads in a google form and makes groups according to students background ###
-############################################################################################
+#########################################################################################################################
+### This script reads in a the 'B4TM CATS group search' google form and makes groups according to students background ###
+#########################################################################################################################
 
 # Read input file as csv.
-CATScsv = "C:/Users/zir826/Downloads/B4TMCATS.csv"
+CATScsv = "C:/Users/zir826/Downloads/B4TM CATS group search 2024 (Responses) - Form responses 1.csv"
 answers <- as.data.frame(read.csv(CATScsv, stringsAsFactors = FALSE))
 n_by_group = 4
 
@@ -54,7 +54,7 @@ for(i in seq(1,nrow(shuffled_df), 3)){
   i_group <- i_group+1
 }
 
-# Prepare final dataframe to print out results.
+# Prepare vectors for final dataframe to print out results.
 name <- c()
 number <- c()
 group <- c()
@@ -62,12 +62,26 @@ MLexp <- c()
 BIOexp <- c()
 comments <- c()
 
-for(group in groups_list){
-
+# Loop through the names of each group.
+for(group_name in names(groups_list)){
+  
+  # Get each group df.
+  i_group <- groups_list[[group_name]]
+  # Loop through each student and fill results vectors.
+  for (i in 1:nrow(i_group)){
     
+    group <- c(group, group_name)
+    name <- c(name, i_group$Name[i])
+    number <- c(number, i_group$Student.number[i])
+    MLexp <- c(MLexp, i_group$ML.exp[i])
+    BIOexp <- c(BIOexp, i_group$Biomedical.exp[i])
+    comments <- c(comments, i_group$Comments[i])
   }
+    
 }
+final_groups <- as.data.frame(cbind(name, number, group, MLexp, BIOexp, comments))
 
-
-
+# Write out final dataframe.
+final_groups <- final_groups[,1:3]
+write.csv(final_groups, "B4TM_CATSgroups_2025.csv")
 
