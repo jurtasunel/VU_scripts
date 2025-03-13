@@ -6,13 +6,18 @@
 ### LAST MODIFIED: 10/03/2024                         ###
 #########################################################
 
-### Documentation:
+### Documentation (1-cross validation, 2- Nested-CV, 3-nestedcv R package, 4-Nested CV in R):
+#https://www.geeksforgeeks.org/cross-validation-machine-learning/
+#https://stats.stackexchange.com/questions/564878/nested-cross-validation-how-does-the-outer-loop-work
+#https://cran.r-project.org/web/packages/nestedcv/vignettes/nestedcv.html
+#https://www.geeksforgeeks.org/how-to-do-nested-cross-validation-with-lasso-in-caret-or-tidymodels/
+
 
 ### Libraries.
 library(caret)
+library(nestedcv)
 
 ### Functions.
-
 
 
 ### Data.
@@ -91,5 +96,6 @@ print(knn_model)
 # #heatmap(correl_features, main = "Feature Correlation", col = colorRampPalette(c("blue", "white", "red"))(20), margins = c(10, 10))
 # 
 # 
+
 
 
