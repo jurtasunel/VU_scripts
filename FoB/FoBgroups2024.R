@@ -2,10 +2,13 @@
 ### This script reads in a canvas grades file and makes groups according to students background ###
 ###################################################################################################
 
-setwd("C:/Users/zir826/Desktop")
+### The sheet is from Canvas>Grades>Export gradebook
+### Each year the IDs for the grades columns change, so the script needs update on lines 27, 36 and 43.
+
+setwd("C:/Users/zir826/Downloads")
 # Read input file as csv.
-CATScsv = "C:/Users/zir826/Downloads/2024-09-02T1702_Grades-X_405052.csv"
-grades <- as.data.frame(read.csv(CATScsv, stringsAsFactors = FALSE))
+GRADEScsv = "2025-09-01T1705_Grades-X_405052.csv"
+grades <- as.data.frame(read.csv(GRADEScsv, stringsAsFactors = FALSE))
 n_by_group = 4
 
 # Count number of groups of 4 people to make.
@@ -21,7 +24,7 @@ for (i in 1:n_groups){
 
 # Remove first two rows that contain grading scheme and sort the grades descending for programming.
 grades <- grades[-c(1,2, nrow(grades)),]
-grades <- grades[order(grades$Programming.intake..347860., decreasing = TRUE),]
+grades <- grades[order(grades$Programming.intake..414920., decreasing = TRUE),]
 # Add one student with programming background to each group.
 for(i in 1:length(groups_list)){
   groups_list[[i]] <- grades[i,1] # The one is for the first column, which has the student name.
@@ -30,14 +33,14 @@ for(i in 1:length(groups_list)){
 grades <- grades[-c(1:n_groups),]
 
 # Repeat with biology background; sort now according to Bio grade, add one to each group and remove those from the df.
-grades <- grades[order(grades$Biology.intake..347861., decreasing = TRUE),]
+grades <- grades[order(grades$Biology.intake..414899., decreasing = TRUE),]
 for(i in 1:length(groups_list)){
   groups_list[[i]] <- c(groups_list[[i]], grades[i,1]) # The one is for the first column, which has the student name.
 }
 grades <- grades[-c(1:n_groups),]
 
 # Repeat with maths background.
-grades <- grades[order(grades$Math.intake..347859., decreasing = TRUE),]
+grades <- grades[order(grades$Math.intake..414913., decreasing = TRUE),]
 for(i in 1:length(groups_list)){
   groups_list[[i]] <- c(groups_list[[i]], grades[i,1]) # The one is for the first column, which has the student name.
 }
@@ -67,7 +70,7 @@ for (i in Group){
   Student_4 <- c(Student_4, groups_list[[i]][4])
 }
 final_groups <- as.data.frame(cbind(Group, Student_1, Student_2, Student_3, Student_4))
-write.csv(final_groups, "FoB_Groups_2024.csv", row.names = FALSE)
+write.csv(final_groups, "FoB_Groups_2025.csv", row.names = FALSE)
 
 
 
